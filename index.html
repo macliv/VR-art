@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Desenho na Folha - Câmera Lúcida</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: rgba(18, 21, 28, 0.84);
+      --border: rgba(255, 255, 255, 0.14);
+      --text: #f3f4f6;
+      --muted: #9ca3af;
+      --primary: #3b82f6;
+      --success: #10b981;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+
+    /* TELA INICIAL */
+    #homeScreen {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      overflow-y: auto;
+      background: radial-gradient(circle at top, #1b2232 0%, #0f1115 70%);
+      z-index: 50;
+    }
+
+    .card {
+      width: 100%;
+      max-width: 440px;
+      background: rgba(24, 28, 38, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .card h1 {
+      margin: 0 0 6px;
+      font-size: 1.45rem;
+    }
+
+    .subtitle {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.45;
+    }
+
+    .steps {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 13px 15px;
+      margin-bottom: 18px;
+      font-size: 0.86rem;
+      line-height: 1.5;
+      color: #d1d5db;
+    }
+
+    .steps ol {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    .steps li + li {
+      margin-top: 6px;
+    }
+
+    .btn-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    button {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 12px 16px;
+      border-radius: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s, transform 0.1s, border-color 0.15s;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border-color: transparent;
+      color: #fff;
+    }
+
+    .btn-success {
+      background: var(--success);
+      border-color: transparent;
+      color: #06281e;
+    }
+
+    .btn-warn, .btn-torch-on {
+      background: var(--warn);
+      border-color: transparent;
+      color: #1f1400;
+    }
+
+    .btn-sm {
+      padding: 8px 11px;
+      font-size: 0.82rem;
+      border-radius: 10px;
+    }
+
+    #imagePreviewBox {
+      display: none;
+      align-items: center;
+      gap: 12px;
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--border);
+    }
+
+    #previewThumb {
+      width: 54px;
+      height: 54px;
+      object-fit: contain;
+      background: #000;
+      border-radius: 8px;
+    }
+
+    #previewName {
+      font-size: 0.85rem;
+      color: #e5e7eb;
+      word-break: break-word;
+    }
+
+    #homeError {
+      display: none;
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 12px;
+      background: rgba(239, 68, 68, 0.16);
+      border: 1px solid rgba(239, 68, 68, 0.5);
+      color: #fecaca;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    /* TELA DA CÂMERA */
+    #cameraScreen {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: #000;
+      overflow: hidden;
+    }
+
+    #stage {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      touch-action: none;
+    }
+
+    #world {
+      position: absolute;
+      inset: 0;
+      transform-origin: center center;
+      will-change: transform;
+    }
+
+    #cameraVideo {
+      position: absolute;
+      pointer-events: none;
+      background: #000;
+    }
+
+    #refWrap {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 0;
+      height: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      will-change: transform;
+    }
+
+    #refImage {
+      display: none;
+      max-width: 78vw;
+      max-height: 78vh;
+      transform: translate(-50%, -50%);
+      opacity: 0.5;
+      pointer-events: none;
+    }
+
+    /* BARRA SUPERIOR */
+    #topBar {
+      position: fixed;
+      top: max(10px, env(safe-area-inset-top));
+      left: 10px;
+      right: 10px;
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      z-index: 20;
+      pointer-events: none;
+    }
+
+    #topBar > * {
+      pointer-events: auto;
+    }
+
+    .top-left {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .badges {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 5px;
+    }
+
+    .badge {
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--panel);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .badge.locked {
+      background: rgba(16, 185, 129, 0.22);
+      border-color: rgba(16, 185, 129, 0.6);
+      color: #a7f3d0;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* AVISO TEMPORÁRIO */
+    #noticeBanner {
+      position: fixed;
+      top: calc(max(10px, env(safe-area-inset-top)) + 54px);
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 22;
+      display: none;
+      max-width: calc(100vw - 24px);
+      padding: 9px 14px;
+      border-radius: 12px;
+      background: rgba(220, 38, 38, 0.92);
+      color: #fff;
+      font-size: 0.84rem;
+      font-weight: 600;
+      text-align: center;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    }
+
+    /* PAINEL DE CONTROLES INFERIOR */
+    #controlsPanel {
+      position: fixed;
+      left: 10px;
+      right: 10px;
+      bottom: max(10px, env(safe-area-inset-bottom));
+      z-index: 20;
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 12px;
+      max-height: 48vh;
+      overflow-y: auto;
+    }
+
+    .mode-note {
+      font-size: 0.76rem;
+      color: #cbd5e1;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+
+    .action-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .sliders-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+    }
+
+    .slider-item {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .slider-item.full {
+      grid-column: 1 / -1;
+    }
+
+    .slider-head {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.76rem;
+      color: #d1d5db;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 0;
+      accent-color: var(--primary);
+      height: 22px;
+    }
+
+    #btnShowPanel {
+      position: fixed;
+      right: 12px;
+      bottom: max(14px, env(safe-area-inset-bottom));
+      z-index: 25;
+      display: none;
+      background: rgba(18, 21, 28, 0.78);
+      backdrop-filter: blur(8px);
+      padding: 10px 14px;
+      font-size: 0.84rem;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TELA INICIAL -->
+  <section id="homeScreen">
+    <div class="card">
+      <h1>Desenho na Folha</h1>
+      <p class="subtitle">
+        Use a câmera traseira como câmera lúcida simples e estável para desenhar por cima na folha.
+      </p>
+
+      <div class="steps">
+        <ol>
+          <li>Escolha a imagem de referência da sua galeria.</li>
+          <li>Apoie o celular em um suporte, tripé ou copo apontando para a folha.</li>
+          <li>Ajuste a posição, zoom, rotação e opacidade do desenho sobre o papel.</li>
+          <li>Toque em <strong>Travar desenho</strong> para evitar toques acidentais e dê zoom conjunto para detalhar.</li>
+        </ol>
+      </div>
+
+      <div class="btn-stack">
+        <button id="btnChooseImage" type="button">Escolher imagem</button>
+        <button id="btnOpenCamera" class="btn-primary" type="button">Abrir câmera</button>
+      </div>
+
+      <input id="fileInput" type="file" accept="image/*" hidden />
+
+      <div id="imagePreviewBox">
+        <img id="previewThumb" alt="Prévia" />
+        <div id="previewName"></div>
+      </div>
+
+      <div id="homeError"></div>
+    </div>
+  </section>
+
+  <!-- TELA DA CÂMERA -->
+  <section id="cameraScreen">
+    <div id="stage">
+      <div id="world">
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <div id="refWrap">
+          <img id="refImage" alt="Referência" />
+        </div>
+      </div>
+    </div>
+
+    <div id="topBar">
+      <div class="top-left">
+        <button id="btnBack" class="btn-sm" type="button" aria-label="Voltar">←</button>
+        <div class="badges">
+          <span id="statusBadge" class="badge">Modo livre (ajuste o desenho)</span>
+          <span id="wakeBadge" class="badge" style="display:none;">Tela ligada</span>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button id="btnTorch" class="btn-sm" type="button" style="display:none;">💡 LED</button>
+        <button id="btnChangeImage" class="btn-sm" type="button">Imagem</button>
+        <button id="btnTogglePanel" class="btn-sm" type="button">Ocultar</button>
+      </div>
+    </div>
+
+    <div id="noticeBanner"></div>
+
+    <div id="controlsPanel">
+      <div id="modeNote" class="mode-note">
+        1 dedo move o desenho • 2 dedos dão zoom e giram o desenho
+      </div>
+
+      <div class="action-row">
+        <button id="btnLock" class="btn-success btn-sm" type="button">Travar desenho</button>
+        <button id="btnCenter" class="btn-sm" type="button">Centralizar</button>
+      </div>
+
+      <div class="sliders-grid">
+        <div class="slider-item">
+          <div class="slider-head">
+            <span>Opacidade</span>
+            <span id="valOpacity">50%</span>
+          </div>
+          <input id="sliderOpacity" type="range" min="0" max="100" value="50" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-head">
+            <span id="labelZoom">Zoom desenho</span>
+            <span id="valZoom">1.00x</span>
+          </div>
+          <input id="sliderZoom" type="range" min="20" max="400" value="100" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-head">
+            <span id="labelX">Posição X</span>
+            <span id="valX">0 px</span>
+          </div>
+          <input id="sliderX" type="range" min="-500" max="500" value="0" />
+        </div>
+
+        <div class="slider-item">
+          <div class="slider-head">
+            <span id="labelY">Posição Y</span>
+            <span id="valY">0 px</span>
+          </div>
+          <input id="sliderY" type="range" min="-500" max="500" value="0" />
+        </div>
+
+        <div id="camZoomGroup" class="slider-item full" style="display:none;">
+          <div class="slider-head">
+            <span>Zoom da câmera</span>
+            <span id="valCamZoom">1.0x</span>
+          </div>
+          <input id="sliderCamZoom" type="range" min="1" max="5" step="0.1" value="1" />
+        </div>
+      </div>
+    </div>
+
+    <button id="btnShowPanel" type="button">Mostrar painel</button>
+  </section>
+
+  <script>
+    (() => {
+      const homeScreen = document.getElementById('homeScreen');
+      const cameraScreen = document.getElementById('cameraScreen');
+      const fileInput = document.getElementById('fileInput');
+      const btnChooseImage = document.getElementById('btnChooseImage');
+      const btnChangeImage = document.getElementById('btnChangeImage');
+      const btnOpenCamera = document.getElementById('btnOpenCamera');
+      const btnBack = document.getElementById('btnBack');
+      const imagePreviewBox = document.getElementById('imagePreviewBox');
+      const previewThumb = document.getElementById('previewThumb');
+      const previewName = document.getElementById('previewName');
+      const homeError = document.getElementById('homeError');
+
+      const stage = document.getElementById('stage');
+      const world = document.getElementById('world');
+      const cameraVideo = document.getElementById('cameraVideo');
+      const refWrap = document.getElementById('refWrap');
+      const refImage = document.getElementById('refImage');
+
+      const statusBadge = document.getElementById('statusBadge');
+      const wakeBadge = document.getElementById('wakeBadge');
+      const btnTorch = document.getElementById('btnTorch');
+      const noticeBanner = document.getElementById('noticeBanner');
+      const modeNote = document.getElementById('modeNote');
+
+      const controlsPanel = document.getElementById('controlsPanel');
+      const btnTogglePanel = document.getElementById('btnTogglePanel');
+      const btnShowPanel = document.getElementById('btnShowPanel');
+      const btnLock = document.getElementById('btnLock');
+      const btnCenter = document.getElementById('btnCenter');
+
+      const sliderOpacity = document.getElementById('sliderOpacity');
+      const valOpacity = document.getElementById('valOpacity');
+      const sliderZoom = document.getElementById('sliderZoom');
+      const valZoom = document.getElementById('valZoom');
+      const labelZoom = document.getElementById('labelZoom');
+      const sliderX = document.getElementById('sliderX');
+      const valX = document.getElementById('valX');
+      const labelX = document.getElementById('labelX');
+      const sliderY = document.getElementById('sliderY');
+      const valY = document.getElementById('valY');
+      const labelY = document.getElementById('labelY');
+
+      const camZoomGroup = document.getElementById('camZoomGroup');
+      const sliderCamZoom = document.getElementById('sliderCamZoom');
+      const valCamZoom = document.getElementById('valCamZoom');
+
+      let mediaStream = null;
+      let videoTrack = null;
+      let wakeLock = null;
+      let currentImageUrl = null;
+      let torchOn = false;
+      let noticeTimer = null;
+
+      let stageW = 0, stageH = 0;
+      let videoW = 0, videoH = 0;
+
+      const ref = { x: 0, y: 0, scale: 1, rotation: 0, opacity: 0.5 };
+      const view = { x: 0, y: 0, scale: 1 };
+      let isLocked = false;
+
+      // 1. ESCOLHA DE IMAGEM
+      btnChooseImage.addEventListener('click', () => fileInput.click());
+      btnChangeImage.addEventListener('click', () => fileInput.click());
+
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+
+        if (currentImageUrl) URL.revokeObjectURL(currentImageUrl);
+        currentImageUrl = URL.createObjectURL(file);
+
+        previewThumb.src = currentImageUrl;
+        previewName.textContent = file.name;
+        imagePreviewBox.style.display = 'flex';
+
+        refImage.src = currentImageUrl;
+        refImage.style.display = 'block';
+        homeError.style.display = 'none';
+      });
+
+      // 2. WAKE LOCK E AVISOS
+      async function requestWakeLock() {
+        if (!('wakeLock' in navigator)) return;
+        try {
+          wakeLock = await navigator.wakeLock.request('screen');
+          wakeBadge.style.display = 'inline-block';
+          wakeLock.addEventListener('release', () => {
+            wakeBadge.style.display = 'none';
+          });
+        } catch (_) {}
+      }
+
+      async function releaseWakeLock() {
+        if (wakeLock) {
+          try { await wakeLock.release(); } catch (_) {}
+          wakeLock = null;
+        }
+        wakeBadge.style.display = 'none';
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && cameraScreen.style.display === 'block') {
+          requestWakeLock();
+        }
+      });
+
+      function showNotice(msg) {
+        if (noticeTimer) clearTimeout(noticeTimer);
+        noticeBanner.textContent = msg;
+        noticeBanner.style.display = 'block';
+        noticeTimer = setTimeout(() => {
+          noticeBanner.style.display = 'none';
+        }, 3000);
+      }
+
+      // 3. CÂMERA, LED E ZOOM
+      function showCameraError(err) {
+        let msg = 'Não foi possível abrir a câmera.';
+        if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+          msg = 'A câmera exige conexão segura (HTTPS) ou localhost. Hospede este arquivo em HTTPS (como GitHub Pages ou Netlify) para abrir a câmera.';
+        } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          msg = 'Este navegador não suporta acesso à câmera (getUserMedia indisponível).';
+        } else if (err) {
+          switch (err.name) {
+            case 'NotAllowedError':
+            case 'PermissionDeniedError':
+              msg = 'Permissão da câmera negada. Autorize o acesso à câmera nas configurações do navegador e tente novamente.';
+              break;
+            case 'NotFoundError':
+            case 'DevicesNotFoundError':
+              msg = 'Nenhuma câmera traseira foi encontrada neste dispositivo.';
+              break;
+            case 'NotReadableError':
+            case 'TrackStartError':
+              msg = 'A câmera já está sendo usada por outro aplicativo. Feche o outro app e tente novamente.';
+              break;
+            case 'OverconstrainedError':
+              msg = 'As configurações solicitadas não são suportadas pela câmera do aparelho.';
+              break;
+            default:
+              msg = `Erro ao abrir a câmera: ${err.message || err.name}`;
+          }
+        }
+        homeError.textContent = msg;
+        homeError.style.display = 'block';
+      }
+
+      function stopCamera() {
+        if (videoTrack && torchOn) {
+          try {
+            videoTrack.applyConstraints({ advanced: [{ torch: false }] });
+          } catch (_) {}
+        }
+        torchOn = false;
+        updateTorchUI();
+
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((t) => t.stop());
+          mediaStream = null;
+        }
+        videoTrack = null;
+        cameraVideo.srcObject = null;
+        releaseWakeLock();
+      }
+
+      btnBack.addEventListener('click', () => {
+        stopCamera();
+        isLocked = false;
+        view.x = 0;
+        view.y = 0;
+        view.scale = 1;
+        updateLockUI();
+        cameraScreen.style.display = 'none';
+        homeScreen.style.display = 'flex';
+      });
+
+      btnOpenCamera.addEventListener('click', async () => {
+        homeError.style.display = 'none';
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          showCameraError(null);
+          return;
+        }
+
+        try {
+          try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                facingMode: { ideal: 'environment' },
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+              },
+              audio: false
+            });
+          } catch (firstErr) {
+            if (firstErr.name === 'OverconstrainedError') {
+              mediaStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' },
+                audio: false
+              });
+            } else {
+              throw firstErr;
+            }
+          }
+
+          cameraVideo.srcObject = mediaStream;
+          await cameraVideo.play();
+
+          videoTrack = mediaStream.getVideoTracks()[0];
+          setupCameraCapabilities();
+          setTimeout(setupCameraCapabilities, 350);
+
+          homeScreen.style.display = 'none';
+          cameraScreen.style.display = 'block';
+
+          updateLayout();
+          updateLockUI();
+          syncSlidersFromState();
+          applyTransforms();
+          requestWakeLock();
+        } catch (err) {
+          showCameraError(err);
+        }
+      });
+
+      function setupCameraCapabilities() {
+        if (!videoTrack || typeof videoTrack.getCapabilities !== 'function') return;
+        const caps = videoTrack.getCapabilities();
+
+        if (caps && caps.zoom && typeof caps.zoom.min === 'number' && typeof caps.zoom.max === 'number' && caps.zoom.max > caps.zoom.min + 0.05) {
+          camZoomGroup.style.display = 'flex';
+          sliderCamZoom.min = caps.zoom.min;
+          sliderCamZoom.max = caps.zoom.max;
+          sliderCamZoom.step = caps.zoom.step || 0.1;
+          const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+          const curZoom = settings.zoom || caps.zoom.min;
+          sliderCamZoom.value = curZoom;
+          valCamZoom.textContent = `${Number(curZoom).toFixed(1)}x`;
+        } else {
+          camZoomGroup.style.display = 'none';
+        }
+
+        btnTorch.style.display = caps && caps.torch ? 'inline-flex' : 'none';
+      }
+
+      function updateTorchUI() {
+        if (torchOn) {
+          btnTorch.textContent = '💡 LED: On';
+          btnTorch.classList.add('btn-torch-on');
+        } else {
+          btnTorch.textContent = '💡 LED';
+          btnTorch.classList.remove('btn-torch-on');
+        }
+      }
+
+      btnTorch.addEventListener('click', async () => {
+        if (!videoTrack) return;
+        const nextState = !torchOn;
+        try {
+          await videoTrack.applyConstraints({ advanced: [{ torch: nextState }] });
+          torchOn = nextState;
+          updateTorchUI();
+        } catch (_) {
+          showNotice('Não foi possível alterar o LED neste navegador/aparelho.');
+        }
+      });
+
+      sliderCamZoom.addEventListener('input', async () => {
+        const z = parseFloat(sliderCamZoom.value);
+        valCamZoom.textContent = `${z.toFixed(1)}x`;
+        if (videoTrack) {
+          try {
+            await videoTrack.applyConstraints({ advanced: [{ zoom: z }] });
+          } catch (_) {}
+        }
+      });
+
+      // 4. LAYOUT E TRANSFORMAÇÕES
+      function updateLayout() {
+        stageW = stage.clientWidth || window.innerWidth;
+        stageH = stage.clientHeight || window.innerHeight;
+
+        videoW = cameraVideo.videoWidth || 1280;
+        videoH = cameraVideo.videoHeight || 720;
+
+        const coverScale = Math.max(stageW / videoW, stageH / videoH);
+        const dispW = videoW * coverScale;
+        const dispH = videoH * coverScale;
+
+        cameraVideo.style.width = `${dispW}px`;
+        cameraVideo.style.height = `${dispH}px`;
+        cameraVideo.style.left = `${(stageW - dispW) / 2}px`;
+        cameraVideo.style.top = `${(stageH - dispH) / 2}px`;
+      }
+
+      cameraVideo.addEventListener('loadedmetadata', updateLayout);
+      window.addEventListener('resize', updateLayout);
+
+      function applyTransforms() {
+        refImage.style.opacity = ref.opacity;
+        refWrap.style.transform = `translate(${ref.x}px, ${ref.y}px) rotate(${ref.rotation}rad) scale(${ref.scale})`;
+        world.style.transform = `translate(${view.x}px, ${view.y}px) scale(${view.scale})`;
+      }
+
+      function clampView() {
+        view.scale = Math.max(1, Math.min(5, view.scale));
+        const maxX = stageW * 0.65 * view.scale + 100;
+        const maxY = stageH * 0.65 * view.scale + 100;
+        view.x = Math.max(-maxX, Math.min(maxX, view.x));
+        view.y = Math.max(-maxY, Math.min(maxY, view.y));
+      }
+
+      function syncSlidersFromState() {
+        sliderOpacity.value = Math.round(ref.opacity * 100);
+        valOpacity.textContent = `${Math.round(ref.opacity * 100)}%`;
+
+        if (!isLocked) {
+          labelZoom.textContent = 'Zoom desenho';
+          labelX.textContent = 'Posição X';
+          labelY.textContent = 'Posição Y';
+
+          sliderZoom.min = 20;
+          sliderZoom.max = 400;
+          sliderZoom.value = Math.round(ref.scale * 100);
+          valZoom.textContent = `${ref.scale.toFixed(2)}x`;
+
+          sliderX.min = -500;
+          sliderX.max = 500;
+          sliderX.value = Math.round(ref.x);
+          valX.textContent = `${Math.round(ref.x)} px`;
+
+          sliderY.min = -500;
+          sliderY.max = 500;
+          sliderY.value = Math.round(ref.y);
+          valY.textContent = `${Math.round(ref.y)} px`;
+        } else {
+          labelZoom.textContent = 'Zoom folha+desenho';
+          labelX.textContent = 'Mover juntos X';
+          labelY.textContent = 'Mover juntos Y';
+
+          sliderZoom.min = 100;
+          sliderZoom.max = 500;
+          sliderZoom.value = Math.round(view.scale * 100);
+          valZoom.textContent = `${view.scale.toFixed(2)}x`;
+
+          const limX = Math.round(stageW * 0.65 * view.scale + 100);
+          const limY = Math.round(stageH * 0.65 * view.scale + 100);
+          sliderX.min = -limX;
+          sliderX.max = limX;
+          sliderX.value = Math.round(view.x);
+          valX.textContent = `${Math.round(view.x)} px`;
+
+          sliderY.min = -limY;
+          sliderY.max = limY;
+          sliderY.value = Math.round(view.y);
+          valY.textContent = `${Math.round(view.y)} px`;
+        }
+      }
+
+      function updateLockUI() {
+        if (isLocked) {
+          btnLock.textContent = 'Destravar';
+          btnLock.className = 'btn-warn btn-sm';
+          statusBadge.textContent = 'Desenho travado (zoom/arrasto juntos)';
+          statusBadge.className = 'badge locked';
+          modeNote.textContent = 'Travado: desenho fixo • 1 dedo move e 2 dedos dão zoom juntos';
+        } else {
+          btnLock.textContent = 'Travar desenho';
+          btnLock.className = 'btn-success btn-sm';
+          statusBadge.textContent = 'Modo livre (ajuste o desenho)';
+          statusBadge.className = 'badge';
+          modeNote.textContent = '1 dedo move o desenho • 2 dedos dão zoom e giram o desenho';
+        }
+      }
+
+      btnLock.addEventListener('click', () => {
+        if (isLocked) {
+          isLocked = false;
+          view.x = 0;
+          view.y = 0;
+          view.scale = 1;
+        } else {
+          isLocked = true;
+        }
+        updateLockUI();
+        syncSlidersFromState();
+        applyTransforms();
+      });
+
+      sliderOpacity.addEventListener('input', () => {
+        ref.opacity = parseInt(sliderOpacity.value, 10) / 100;
+        valOpacity.textContent = `${sliderOpacity.value}%`;
+        applyTransforms();
+      });
+
+      sliderZoom.addEventListener('input', () => {
+        const s = parseInt(sliderZoom.value, 10) / 100;
+        if (!isLocked) {
+          ref.scale = s;
+        } else {
+          const factor = s / view.scale;
+          view.x *= factor;
+          view.y *= factor;
+          view.scale = s;
+          clampView();
+        }
+        valZoom.textContent = `${s.toFixed(2)}x`;
+        applyTransforms();
+      });
+
+      sliderX.addEventListener('input', () => {
+        const v = parseInt(sliderX.value, 10);
+        if (!isLocked) ref.x = v;
+        else { view.x = v; clampView(); }
+        valX.textContent = `${v} px`;
+        applyTransforms();
+      });
+
+      sliderY.addEventListener('input', () => {
+        const v = parseInt(sliderY.value, 10);
+        if (!isLocked) ref.y = v;
+        else { view.y = v; clampView(); }
+        valY.textContent = `${v} px`;
+        applyTransforms();
+      });
+
+      btnCenter.addEventListener('click', () => {
+        if (!isLocked) {
+          ref.x = 0;
+          ref.y = 0;
+          ref.scale = 1;
+          ref.rotation = 0;
+        } else {
+          view.x = 0;
+          view.y = 0;
+          view.scale = 1;
+        }
+        syncSlidersFromState();
+        applyTransforms();
+      });
+
+      btnTogglePanel.addEventListener('click', () => {
+        controlsPanel.style.display = 'none';
+        btnShowPanel.style.display = 'inline-flex';
+      });
+
+      btnShowPanel.addEventListener('click', () => {
+        controlsPanel.style.display = 'block';
+        btnShowPanel.style.display = 'none';
+      });
+
+      // 5. GESTOS NA TELA
+      const pointers = new Map();
+      let prevGesture = null;
+
+      function getGestureState() {
+        const pts = Array.from(pointers.values());
+        if (pts.length === 1) {
+          return { count: 1, x: pts[0].x, y: pts[0].y };
+        }
+        if (pts.length >= 2) {
+          const p1 = pts[0], p2 = pts[1];
+          return {
+            count: 2,
+            x: (p1.x + p2.x) / 2,
+            y: (p1.y + p2.y) / 2,
+            dist: Math.hypot(p2.x - p1.x, p2.y - p1.y),
+            angle: Math.atan2(p2.y - p1.y, p2.x - p1.x)
+          };
+        }
+        return null;
+      }
+
+      stage.addEventListener('pointerdown', (e) => {
+        stage.setPointerCapture(e.pointerId);
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        prevGesture = getGestureState();
+      });
+
+      stage.addEventListener('pointermove', (e) => {
+        if (!pointers.has(e.pointerId)) return;
+        pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+        const cur = getGestureState();
+        if (!cur || !prevGesture || cur.count !== prevGesture.count) {
+          prevGesture = cur;
+          return;
+        }
+
+        if (!isLocked) {
+          if (cur.count === 1) {
+            ref.x += cur.x - prevGesture.x;
+            ref.y += cur.y - prevGesture.y;
+          } else if (cur.count === 2 && prevGesture.dist > 5) {
+            const scaleFactor = cur.dist / prevGesture.dist;
+            let dAngle = cur.angle - prevGesture.angle;
+            if (dAngle > Math.PI) dAngle -= Math.PI * 2;
+            if (dAngle < -Math.PI) dAngle += Math.PI * 2;
+
+            const rect = stage.getBoundingClientRect();
+            const pmX = prevGesture.x - (rect.left + rect.width / 2);
+            const pmY = prevGesture.y - (rect.top + rect.height / 2);
+            const cmX = cur.x - (rect.left + rect.width / 2);
+            const cmY = cur.y - (rect.top + rect.height / 2);
+
+            const vx = ref.x - pmX;
+            const vy = ref.y - pmY;
+            const cos = Math.cos(dAngle), sin = Math.sin(dAngle);
+
+            ref.x = cmX + (vx * cos - vy * sin) * scaleFactor;
+            ref.y = cmY + (vx * sin + vy * cos) * scaleFactor;
+            ref.scale = Math.max(0.2, Math.min(4.0, ref.scale * scaleFactor));
+            ref.rotation += dAngle;
+          }
+        } else {
+          if (cur.count === 1) {
+            view.x += cur.x - prevGesture.x;
+            view.y += cur.y - prevGesture.y;
+            clampView();
+          } else if (cur.count === 2 && prevGesture.dist > 5) {
+            const scaleFactor = cur.dist / prevGesture.dist;
+            const newScale = Math.max(1.0, Math.min(5.0, view.scale * scaleFactor));
+            const actualFactor = newScale / view.scale;
+
+            const rect = stage.getBoundingClientRect();
+            const pmX = prevGesture.x - (rect.left + rect.width / 2);
+            const pmY = prevGesture.y - (rect.top + rect.height / 2);
+            const cmX = cur.x - (rect.left + rect.width / 2);
+            const cmY = cur.y - (rect.top + rect.height / 2);
+
+            view.x = cmX - (pmX - view.x) * actualFactor;
+            view.y = cmY - (pmY - view.y) * actualFactor;
+            view.scale = newScale;
+            clampView();
+          }
+        }
+
+        prevGesture = cur;
+        syncSlidersFromState();
+        applyTransforms();
+      });
+
+      function onPointerUp(e) {
+        pointers.delete(e.pointerId);
+        prevGesture = getGestureState();
+      }
+      stage.addEventListener('pointerup', onPointerUp);
+      stage.addEventListener('pointercancel', onPointerUp);
+    })();
+  </script>
+</body>
+</html>
